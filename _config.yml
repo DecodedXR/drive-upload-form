@@ -1,0 +1,6 @@
+title: Free Drive Upload Form
+description: Let anyone upload files to your Google Drive folder without a Google account. Free Apps Script.
+plugins:
+  - jekyll-sitemap
+exclude:
+  - Page.html

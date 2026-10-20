@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font: 16px/1.5 system-ui, -apple-system, Segoe UI, Roboto, sans-serif; background: #f6f7f9; color: #1d1f23; margin: 0; padding: 24px 16px; }
+    main { max-width: 520px; margin: 0 auto; background: #fff; border-radius: 12px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+    h1 { font-size: 22px; margin: 0 0 16px; }
+    label { display: block; font-weight: 600; margin: 14px 0 4px; }
+    input, textarea { width: 100%; box-sizing: border-box; font: inherit; padding: 9px 10px; border: 1px solid #c9ced6; border-radius: 8px; }
+    small { color: #5b6270; }
+    button { margin-top: 18px; width: 100%; font: inherit; font-weight: 600; padding: 11px; border: 0; border-radius: 8px; background: #1a73e8; color: #fff; cursor: pointer; }
+    button:disabled { background: #9db9e8; cursor: default; }
+    #status div { margin-top: 10px; padding: 8px 10px; border-radius: 8px; background: #eef3fd; }
+    #status div.err { background: #fdeeee; color: #a01818; }
+    #status div.ok { background: #eaf7ee; color: #17602e; }
+  </style>
+</head>
+<body>
+<main>
+  <h1><?= config.title ?></h1>
+  <form id="f">
+    <label for="name">Your name</label>
+    <input id="name" required autocomplete="name">
+    <label for="email">Email <small>(optional)</small></label>
+    <input id="email" type="email" autocomplete="email">
+    <label for="note">Note <small>(optional)</small></label>
+    <textarea id="note" rows="2"></textarea>
+    <? if (config.needsPassword) { ?>
+    <label for="password">Password</label>
+    <input id="password" type="password" required>
+    <? } ?>
+    <label for="files">Files</label>
+    <input id="files" type="file" multiple required>
+    <small>Up to <?= config.maxMb ?> MB each. Allowed: <?= config.allowed.join(', ') ?></small>
+    <button id="go" type="submit">Upload</button>
+  </form>
+  <div id="status" aria-live="polite"></div>
+</main>
+<script>
+  const cfg = { maxMb: <?= config.maxMb ?>, allowed: <?!= JSON.stringify(config.allowed) ?> };
+  const $ = id => document.getElementById(id);
+  function say(text, cls) { const d = document.createElement('div'); d.textContent = text; if (cls) d.className = cls; $('status').appendChild(d); return d; }
+  function readB64(file) {
+    return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result.split(',')[1] || ''); r.onerror = rej; r.readAsDataURL(file); });
+  }
+  function send(payload) {
+    return new Promise((res, rej) => google.script.run.withSuccessHandler(res).withFailureHandler(e => rej(e)).upload(payload));
+  }
+  $('f').addEventListener('submit', async ev => {
+    ev.preventDefault();
+    $('go').disabled = true; $('status').textContent = '';
+    for (const file of $('files').files) {
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!cfg.allowed.includes(ext)) { say(file.name + ': file type not allowed.', 'err'); continue; }
+      if (file.size > cfg.maxMb * 1048576) { say(file.name + ': larger than ' + cfg.maxMb + ' MB.', 'err'); continue; }
+      const line = say('Uploading ' + file.name + '…');
+      try {
+        const msg = await send({
+          name: $('name').value, email: $('email').value, note: $('note').value,
+          password: $('password') ? $('password').value : '',
+          fileName: file.name, mimeType: file.type, data: await readB64(file),
+        });
+        line.textContent = msg; line.className = 'ok';
+      } catch (e) {
+        line.textContent = file.name + ': ' + (e && e.message ? e.message : e); line.className = 'err';
+      }
+    }
+    $('go').disabled = false;
+  });
+</script>
+</body>
+</html>
