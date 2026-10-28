@@ -13,6 +13,7 @@ Let anyone upload files to a folder in your Google Drive without a Google accoun
 ## Guides
 
 - [How to let people upload files to your Google Drive without a Google account](upload-files-to-google-drive-without-sign-in.html)
+- [A free Formfacade file-upload alternative](formfacade-file-upload-alternative.html)
 
 ## Get it
 
